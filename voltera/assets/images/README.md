@@ -1,0 +1,1 @@
+Place your logo image file here as `logo.png` (or other supported image formats).

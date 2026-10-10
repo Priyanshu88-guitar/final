@@ -1,0 +1,479 @@
+// VOLTERA Backend Database Schema
+// Phase 1-9: Auth, Profiles, Chargers, Bookings, Sessions, Payments, Notifications, Bundles, Support & Admin
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  fullName        String?
+  email           String?   @unique
+  phoneNumber     String    @unique
+  passwordHash    String
+  accountStatus   String    @default("ACTIVE")
+  isPhoneVerified Boolean   @default(false)
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  roles                   UserRole[]
+  otps                    OtpVerification[]
+  sessions                AuthSession[]
+  customerProfile         CustomerProfile?
+  providerProfile         ProviderProfile?
+  stations                ChargingStation[]
+  bookings                Booking[]
+  chargingSessions        ChargingSession[]
+  payments                Payment[]
+  transactionsOwned       Transaction[] @relation("CustomerTransactions")
+  transactionsProvider    Transaction[] @relation("ProviderTransactions")
+  providerBank            ProviderBankAccount?
+  payouts                 ProviderPayout[]
+  notifications           Notification[]
+  deviceTokens            DeviceToken[]
+  notificationPreferences NotificationPreference?
+  bundlePurchases         BundlePurchase[]
+  emergencyRequests       EmergencyRequest[]
+  supportTickets          SupportTicket[]
+  supportMessages         SupportMessage[]
+  adminAuditLogs          AdminAuditLog[]
+  savedChargers           SavedCharger[] @relation("CustomerSavedChargers")
+
+  @@map("users")
+}
+
+model UserRole {
+  id         String   @id @default(uuid())
+  userId     String
+  role       String
+  assignedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@map("user_roles")
+}
+
+model OtpVerification {
+  id          String   @id @default(uuid())
+  userId      String?
+  phoneNumber String
+  otpHash     String
+  purpose     String
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(5)
+  isUsed      Boolean  @default(false)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([phoneNumber, purpose, isUsed])
+  @@map("otp_verifications")
+}
+
+model AuthSession {
+  id         String   @id @default(uuid())
+  userId     String
+  tokenHash  String   @unique
+  deviceInfo String?
+  ipAddress  String?
+  isRevoked  Boolean  @default(false)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("auth_sessions")
+}
+
+model CustomerProfile {
+  id           String    @id @default(uuid())
+  userId       String    @unique
+  fullName     String?
+  dateOfBirth  String?
+  city         String?
+  state        String?
+  pincode      String?
+  address      String?
+  profileImage String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("customer_profiles")
+}
+
+model ProviderProfile {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  businessName       String
+  contactPhone       String?
+  contactEmail       String?
+  address            String
+  city               String?
+  state              String?
+  pincode            String?
+  taxId              String?
+  description        String?
+  verificationStatus String   @default("PENDING")
+  logoImage          String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("provider_profiles")
+}
+
+model ChargingStation {
+  id          String   @id @default(uuid())
+  providerId  String
+  name        String
+  address     String
+  city        String?
+  state       String?
+  pincode     String?
+  latitude    Float
+  longitude   Float
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  provider    User      @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  chargers    Charger[]
+
+  @@map("charging_stations")
+}
+
+model Charger {
+  id            String   @id @default(uuid())
+  stationId     String
+  chargerCode   String   @unique
+  name          String?
+  chargerType   String
+  connectorType String
+  powerKw       Float
+  pricePerHour  Float    @default(0.0)
+  pricePerKwh   Float    @default(0.0)
+  status        String   @default("AVAILABLE")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  station       ChargingStation @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  bookings      Booking[]
+  sessions      ChargingSession[]
+  savedBy       SavedCharger[]
+
+  @@map("chargers")
+}
+
+model Booking {
+  id          String   @id @default(uuid())
+  customerId  String
+  chargerId   String
+  startTime   DateTime
+  endTime     DateTime
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customer    User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  charger     Charger  @relation(fields: [chargerId], references: [id], onDelete: Cascade)
+  session     ChargingSession?
+  payments    Payment[]
+
+  @@map("bookings")
+}
+
+model ChargingSession {
+  id          String   @id @default(uuid())
+  bookingId   String   @unique
+  chargerId   String
+  customerId  String
+  startedAt   DateTime @default(now())
+  endedAt     DateTime?
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  charger     Charger  @relation(fields: [chargerId], references: [id], onDelete: Cascade)
+  customer    User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  payments    Payment[]
+
+  @@map("charging_sessions")
+}
+
+model Payment {
+  id                 String   @id @default(uuid())
+  customerId         String
+  bookingId          String?
+  sessionId          String?
+  bundlePurchaseId   String?  @unique
+  amount             Int
+  currency           String   @default("INR")
+  status             String   @default("CREATED")
+  gatewayProvider    String   @default("mock")
+  gatewayOrderId     String?  @unique
+  gatewayPaymentId   String?  @unique
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  paidAt             DateTime?
+
+  customer           User             @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  booking            Booking?         @relation(fields: [bookingId], references: [id])
+  session            ChargingSession? @relation(fields: [sessionId], references: [id])
+  bundlePurchase     BundlePurchase?  @relation(fields: [bundlePurchaseId], references: [id])
+  transactions       Transaction[]
+
+  @@map("payments")
+}
+
+model Transaction {
+  id            String   @id @default(uuid())
+  customerId    String?
+  providerId    String?
+  paymentId     String?
+  payoutId      String?
+  type          String
+  amount        Int
+  currency      String   @default("INR")
+  status        String   @default("COMPLETED")
+  createdAt     DateTime @default(now())
+
+  customer      User?           @relation("CustomerTransactions", fields: [customerId], references: [id], onDelete: Cascade)
+  provider      User?           @relation("ProviderTransactions", fields: [providerId], references: [id], onDelete: Cascade)
+  payment       Payment?        @relation(fields: [paymentId], references: [id])
+  payout        ProviderPayout? @relation(fields: [payoutId], references: [id])
+
+  @@map("transactions")
+}
+
+model ProviderBankAccount {
+  id            String   @id @default(uuid())
+  providerId    String   @unique
+  accountName   String
+  accountNumber String
+  ifscCode      String
+  bankName      String?
+  isVerified    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  provider      User     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@map("provider_bank_accounts")
+}
+
+model ProviderPayout {
+  id                String   @id @default(uuid())
+  providerId        String
+  amount            Int
+  currency          String   @default("INR")
+  status            String   @default("REQUESTED")
+  providerReference String?
+  requestedAt       DateTime @default(now())
+  processedAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  provider          User          @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  transactions      Transaction[]
+
+  @@map("provider_payouts")
+}
+
+model Notification {
+  id               String   @id @default(uuid())
+  recipientUserId  String
+  type             String
+  title            String
+  body             String
+  dataPayload      String?
+  relatedEntityId  String?
+  relatedEntityType String?
+  isRead           Boolean  @default(false)
+  readAt           DateTime?
+  deliveryStatus   String   @default("PENDING")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  recipient        User     @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  @@index([recipientUserId, isRead])
+  @@index([recipientUserId, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+model DeviceToken {
+  id         String   @id @default(uuid())
+  userId     String
+  token      String   @unique
+  platform   String
+  deviceMeta String?
+  isActive   Boolean  @default(true)
+  lastUsedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive])
+  @@map("device_tokens")
+}
+
+model NotificationPreference {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  pushEnabled           Boolean  @default(true)
+  bookingNotifications  Boolean  @default(true)
+  paymentNotifications  Boolean  @default(true)
+  sessionNotifications  Boolean  @default(true)
+  promotionalEmails     Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+model Bundle {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  price        Int
+  currency     String   @default("INR")
+  validityDays Int?
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  purchases    BundlePurchase[]
+
+  @@map("bundles")
+}
+
+model BundlePurchase {
+  id          String    @id @default(uuid())
+  customerId  String
+  bundleId    String
+  status      String    @default("PENDING")
+  purchasedAt DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  customer    User      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  bundle      Bundle    @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  payment     Payment?
+
+  @@map("bundle_purchases")
+}
+
+model EmergencyService {
+  id          String   @id @default(uuid())
+  name        String
+  serviceType String
+  phoneNumber String
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  requests    EmergencyRequest[]
+
+  @@map("emergency_services")
+}
+
+model EmergencyRequest {
+  id          String    @id @default(uuid())
+  userId      String
+  serviceId   String
+  status      String    @default("REQUESTED")
+  description String?
+  latitude    Float?
+  longitude   Float?
+  address     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  resolvedAt  DateTime?
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  service     EmergencyService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@map("emergency_requests")
+}
+
+model SupportTicket {
+  id          String    @id @default(uuid())
+  userId      String
+  category    String
+  subject     String
+  status      String    @default("OPEN")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  closedAt    DateTime?
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages    SupportMessage[]
+
+  @@index([userId, status])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id           String   @id @default(uuid())
+  ticketId     String
+  senderUserId String
+  message      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  ticket       SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sender       User          @relation(fields: [senderUserId], references: [id], onDelete: Cascade)
+
+  @@map("support_messages")
+}
+
+// ----------------------------------------------------------------------
+// PHASE 9: ADMIN & REPORTING
+// ----------------------------------------------------------------------
+
+model AdminAuditLog {
+  id          String   @id @default(uuid())
+  adminUserId String
+  action      String   // e.g., UPDATE_USER_STATUS, VERIFY_PROVIDER
+  entityType  String   // e.g., USER, PROVIDER_PROFILE, SUPPORT_TICKET
+  entityId    String
+  metadata    String?  // JSON string
+  createdAt   DateTime @default(now())
+
+  adminUser   User     @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId])
+  @@index([entityType, entityId])
+  @@map("admin_audit_logs")
+}
+
+model SavedCharger {
+  id         String   @id @default(uuid())
+  customerId String
+  chargerId  String
+  createdAt  DateTime @default(now())
+
+  customer   User    @relation("CustomerSavedChargers", fields: [customerId], references: [id], onDelete: Cascade)
+  charger    Charger @relation(fields: [chargerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, chargerId])
+  @@map("saved_chargers")
+}
