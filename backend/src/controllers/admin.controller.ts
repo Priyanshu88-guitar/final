@@ -54,8 +54,8 @@ export class AdminController {
     try {
       const adminId = req.user!.id;
       const { id } = req.params; // Using the User ID as the reference for simplicity
-      const { status } = req.body;
-      const result = await adminService.updateProviderVerification(adminId, id, status);
+      const { status, setupStatus } = req.body;
+      const result = await adminService.updateProviderVerification(adminId, id, status, setupStatus);
       res.status(200).json(successResponse('Provider verification updated', result));
     } catch (error) {
       next(error);

@@ -74,6 +74,47 @@ export class ProfileController {
       next(error);
     }
   };
+
+  public getCustomerVehicles = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user!.id;
+      const list = await profileService.getCustomerVehicles(userId);
+      res.status(200).json(successResponse('Customer vehicles retrieved', list));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public addCustomerVehicle = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user!.id;
+      const result = await profileService.addCustomerVehicle(userId, req.body);
+      res.status(201).json(successResponse('Vehicle added successfully', result));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public getProviderSetupPhotos = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user!.id;
+      const list = await profileService.getProviderSetupPhotos(userId);
+      res.status(200).json(successResponse('Provider setup photos retrieved', list));
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  public uploadProviderSetupPhoto = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user!.id;
+      // In a real app we'd use multer/S3. For this assignment, assuming base64 string in req.body.photoUrl
+      const result = await profileService.addProviderSetupPhoto(userId, req.body);
+      res.status(201).json(successResponse('Setup photo uploaded', result));
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const profileController = new ProfileController();

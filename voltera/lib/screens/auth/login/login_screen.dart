@@ -68,29 +68,18 @@ class _LoginScreenState extends State<LoginScreen> {
             break;
         }
       } catch (e) {
-        debugPrint('Login API error (proceeding with local session): $e');
+        debugPrint('Login API error: $e');
         if (!mounted) return;
         setState(() {
           _isLoading = false;
         });
 
-        // Fallback for seamless testing
-        VolteraSession().login(
-          userRole: _selectedLoginRole,
-          mobile: _mobileController.text.trim(),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Login failed: Invalid phone number or password.'),
+            backgroundColor: Colors.red,
+          ),
         );
-
-        switch (_selectedLoginRole) {
-          case UserRole.customer:
-            Navigator.pushReplacementNamed(context, AppRoutes.customerHome);
-            break;
-          case UserRole.provider:
-            Navigator.pushReplacementNamed(context, AppRoutes.providerHome);
-            break;
-          case UserRole.admin:
-            Navigator.pushReplacementNamed(context, AppRoutes.adminDashboard);
-            break;
-        }
       }
     }
   }

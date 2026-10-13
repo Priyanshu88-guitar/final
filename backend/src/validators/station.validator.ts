@@ -3,12 +3,18 @@ import { z } from 'zod';
 export const stationStatusSchema = z.enum(['ACTIVE', 'INACTIVE', 'MAINTENANCE']);
 export const chargerStatusSchema = z.enum(['AVAILABLE', 'OCCUPIED', 'OFFLINE', 'MAINTENANCE', 'DISABLED']);
 
+const pincodeSchema = z.string().trim().optional().or(z.literal('')).transform((val) => {
+  if (!val || val === '') return undefined;
+  if (!/^\d{6}$/.test(val)) return undefined;
+  return val;
+});
+
 export const createStationSchema = z.object({
   name: z.string().trim().min(2, 'Station name must be at least 2 characters').max(150),
   address: z.string().trim().min(5, 'Address must be at least 5 characters').max(500),
-  city: z.string().trim().max(100).optional(),
-  state: z.string().trim().max(100).optional(),
-  pincode: z.string().regex(/^\d{6}$/, 'Pincode must be exactly 6 digits').optional().or(z.literal('')),
+  city: z.string().trim().max(100).optional().or(z.literal('')),
+  state: z.string().trim().max(100).optional().or(z.literal('')),
+  pincode: pincodeSchema,
   latitude: z.number().min(-90).max(90, 'Invalid latitude'),
   longitude: z.number().min(-180).max(180, 'Invalid longitude'),
   status: stationStatusSchema.optional(),

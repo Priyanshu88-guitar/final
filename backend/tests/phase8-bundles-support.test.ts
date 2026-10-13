@@ -43,7 +43,7 @@ describe('Phase 8: Bundles, Support & Emergency API', () => {
     const pPhone = '9876000201';
     await prisma.otpVerification.deleteMany({ where: { phoneNumber: pPhone } });
     await prisma.user.deleteMany({ where: { phoneNumber: pPhone } });
-    await supertest(app).post('/auth/signup').send({ fullName: 'Support Provider', phone: pPhone, password: 'Password123', role: 'PROVIDER' });
+    await supertest(app).post('/auth/signup').send({ fullName: 'Support Provider', phone: pPhone, password: 'Password123', role: 'PROVIDER', businessName: 'Support Provider Station', address: 'Test Addr' });
     const otpP = mockSms.sentMessages[mockSms.sentMessages.length - 1].message.match(/\d{6}/)?.[0] || '';
     const resP = await supertest(app).post('/auth/otp/verify').send({ phone: pPhone, otp: otpP, purpose: 'SIGNUP_VERIFICATION' });
     providerToken = resP.body.data.tokens.accessToken;
@@ -77,7 +77,7 @@ describe('Phase 8: Bundles, Support & Emergency API', () => {
       .post(`/bundles/${bundleId}/purchase`)
       .set('Authorization', `Bearer ${customerToken}`);
 
-    if (res.status === 400) {
+    if (res.status !== 201) {
       console.error(res.body);
     }
     expect(res.status).toBe(201);

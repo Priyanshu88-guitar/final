@@ -7,6 +7,7 @@ import { validate } from '../middleware/validate.middleware.js';
 import { saveCustomerProfileSchema } from '../validators/profile.validator.js';
 import { createBookingSchema } from '../validators/booking.validator.js';
 import { createPaymentSchema } from '../validators/payment.validator.js';
+import { saveCustomerVehicleSchema } from '../validators/profile.validator.js';
 
 const router = Router();
 
@@ -18,6 +19,10 @@ router.get('/profile', profileController.getCustomerProfile);
 router.post('/profile', validate({ body: saveCustomerProfileSchema }), profileController.saveCustomerProfile);
 router.put('/profile', validate({ body: saveCustomerProfileSchema }), profileController.saveCustomerProfile);
 router.patch('/profile', validate({ body: saveCustomerProfileSchema }), profileController.saveCustomerProfile);
+
+// Vehicles
+router.get('/vehicles', profileController.getCustomerVehicles);
+router.post('/vehicles', validate({ body: saveCustomerVehicleSchema }), profileController.addCustomerVehicle);
 
 // Saved Chargers
 router.get('/saved-chargers', profileController.getSavedChargers);

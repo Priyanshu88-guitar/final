@@ -27,6 +27,7 @@ export const validate = (schema: RequestValidationSchema) => {
           field: issue.path.join('.'),
           message: issue.message,
         }));
+        console.error('Zod Validation Failed:', JSON.stringify(issues, null, 2));
         next(AppError.unprocessableEntity('Validation failed', issues));
       } else {
         next(error);

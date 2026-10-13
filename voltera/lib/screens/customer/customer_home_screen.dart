@@ -9,6 +9,7 @@ import '../../widgets/common/section_title.dart';
 import '../../data/services/api_service.dart';
 import '../../data/repositories/customer_repository.dart';
 import '../../models/customer/charger.dart';
+import 'full_map/full_charger_map_screen.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
   const CustomerHomeScreen({super.key});
@@ -227,7 +228,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 title: 'Nearby Chargers',
                 actionText: 'View All',
                 onActionPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.customerSearch);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const FullChargerMapScreen()));
                 },
               ),
               const SizedBox(height: 12),

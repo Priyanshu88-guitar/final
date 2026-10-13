@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../../app/session.dart';
 import '../../models/auth_session.dart';
 import '../../models/user_role.dart';
@@ -7,7 +8,7 @@ import '../../core/demo/demo_data.dart';
 
 abstract class AuthRepository {
   Future<AuthSession?> login(String identifier, String password, UserRole role);
-  Future<AuthSession?> signup(String email, String password, UserRole role, {String? phone, String? name});
+  Future<AuthSession?> signup(String email, String password, UserRole role, {String? phone, String? name, String? businessName, String? address, String? city, String? state, String? pincode, String? taxId});
   Future<void> logout();
   Future<AuthSession?> getCurrentSession();
   Future<List<UserRole>> registerRole(UserRole role);
@@ -86,6 +87,12 @@ class AuthRepositoryImpl implements AuthRepository {
     UserRole role, {
     String? phone,
     String? name,
+    String? businessName,
+    String? address,
+    String? city,
+    String? state,
+    String? pincode,
+    String? taxId,
   }) async {
     if (DemoConfig.demoMode) {
       return AuthSession(
@@ -98,15 +105,26 @@ class AuthRepositoryImpl implements AuthRepository {
     }
 
     try {
+      final Map<String, dynamic> bodyData = {
+        'email': email,
+        'password': password,
+        'phone': phone ?? '+919876543210',
+        'fullName': name ?? 'New User',
+        'role': role.name.toUpperCase(),
+      };
+      
+      if (businessName != null) bodyData['businessName'] = businessName;
+      if (address != null) bodyData['address'] = address;
+      if (city != null) bodyData['city'] = city;
+      if (state != null) bodyData['state'] = state;
+      if (pincode != null) bodyData['pincode'] = pincode;
+      if (taxId != null) bodyData['taxId'] = taxId;
+
+      debugPrint('SENDING SIGNUP PAYLOAD: $bodyData');
+
       final response = await apiService.post(
         '/auth/signup',
-        body: {
-          'email': email,
-          'password': password,
-          'phone': phone ?? '+919876543210',
-          'fullName': name ?? 'New User',
-          'role': role.name.toUpperCase(),
-        },
+        body: bodyData,
       ).timeout(const Duration(seconds: 4));
 
       final data = response['data'];

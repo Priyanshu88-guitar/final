@@ -19,6 +19,15 @@ class _SignupScreenState extends State<SignupScreen> {
   final _emailController = TextEditingController();
   final _mobileController = TextEditingController();
   final _passwordController = TextEditingController();
+  
+  // Provider extra controllers
+  final _businessNameController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _stateController = TextEditingController();
+  final _pincodeController = TextEditingController();
+  final _taxIdController = TextEditingController();
+  
   UserRole _selectedRole = UserRole.customer;
   bool _isLoading = false;
 
@@ -28,6 +37,12 @@ class _SignupScreenState extends State<SignupScreen> {
     _emailController.dispose();
     _mobileController.dispose();
     _passwordController.dispose();
+    _businessNameController.dispose();
+    _addressController.dispose();
+    _cityController.dispose();
+    _stateController.dispose();
+    _pincodeController.dispose();
+    _taxIdController.dispose();
     super.dispose();
   }
 
@@ -44,6 +59,40 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
+    if (password.length < 8 || !password.contains(RegExp(r'[A-Za-z]')) || !password.contains(RegExp(r'[0-9]'))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password must be at least 8 chars long with a letter and a number'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    if (_selectedRole == UserRole.provider) {
+      if (_businessNameController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter Business Name'), backgroundColor: Colors.red),
+        );
+        return;
+      }
+      if (_addressController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter Business Address'), backgroundColor: Colors.red),
+        );
+        return;
+      }
+      if (_cityController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter City'), backgroundColor: Colors.red),
+        );
+        return;
+      }
+      if (_pincodeController.text.trim().length != 6) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid 6-digit Pincode'), backgroundColor: Colors.red),
+        );
+        return;
+      }
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -56,32 +105,59 @@ class _SignupScreenState extends State<SignupScreen> {
         _selectedRole,
         phone: phone,
         name: name.isEmpty ? 'User' : name,
+        businessName: _selectedRole == UserRole.provider ? _businessNameController.text.trim() : null,
+        address: _selectedRole == UserRole.provider ? _addressController.text.trim() : null,
+        city: _selectedRole == UserRole.provider ? _cityController.text.trim() : null,
+        state: _selectedRole == UserRole.provider ? _stateController.text.trim() : null,
+        pincode: _selectedRole == UserRole.provider ? _pincodeController.text.trim() : null,
+        taxId: _selectedRole == UserRole.provider ? _taxIdController.text.trim() : null,
       );
-    } catch (e) {
-      debugPrint('Signup API error: $e');
-    } finally {
-      if (mounted) {
+
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+
+      // We moved the navigation INSIDE the try block!
+      // It only happens if the signup actually worked.
+      final String flow = _selectedRole == UserRole.provider ? 'providerSignup' : 'customerSignup';
+      Navigator.pushNamed(
+        context,
+        AppRoutes.otp,
+        arguments: {
+          'role': _selectedRole,
+          'mobile': phone,
+          'email': email,
+          'name': name,
+          'password': password,
+          'flow': flow,
+        },
+      );
+
+      } catch (e) {
+        debugPrint('Signup API error: $e');
+        if (e is ApiException) {
+          debugPrint('Signup API Error Details: ${e.details}');
+        }
+        if (!mounted) return;
         setState(() {
           _isLoading = false;
         });
+
+        // SHOW REAL ERROR ON SCREEN AND STOP!
+        String errorMsg = e.toString();
+        if (e is ApiException && e.details != null) {
+          errorMsg = '$errorMsg\nDetails: ${e.details}';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Signup failed: $errorMsg'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
       }
-    }
-
-    if (!mounted) return;
-    final String flow = _selectedRole == UserRole.provider ? 'providerSignup' : 'customerSignup';
-
-    Navigator.pushNamed(
-      context,
-      AppRoutes.otp,
-      arguments: {
-        'role': _selectedRole,
-        'mobile': phone,
-        'email': email,
-        'name': name,
-        'password': password,
-        'flow': flow,
-      },
-    );
   }
 
   @override
@@ -195,9 +271,94 @@ class _SignupScreenState extends State<SignupScreen> {
               const SizedBox(height: 6),
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Enter full name', hintText: 'Rahul Sharma'),
+                decoration: InputDecoration(
+                  labelText: _selectedRole == UserRole.provider ? 'Enter your or representative name' : 'Enter full name', 
+                  hintText: 'Rahul Sharma'
+                ),
               ),
               const SizedBox(height: 16),
+
+              if (_selectedRole == UserRole.provider) ...[
+                const Text('Business Name', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _businessNameController,
+                  decoration: const InputDecoration(labelText: 'Enter business name', hintText: 'VoltaCharge Station'),
+                ),
+                const SizedBox(height: 16),
+                const Text('Business Address', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _addressController,
+                  decoration: const InputDecoration(labelText: 'Enter complete address', hintText: 'SG Highway'),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('City', style: TextStyle(fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _cityController,
+                            decoration: const InputDecoration(labelText: 'City', hintText: 'Ahmedabad'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('State', style: TextStyle(fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _stateController,
+                            decoration: const InputDecoration(labelText: 'State', hintText: 'Gujarat'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Pincode', style: TextStyle(fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _pincodeController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: 'Pincode', hintText: '380015'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Tax ID / GSTIN', style: TextStyle(fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _taxIdController,
+                            decoration: const InputDecoration(labelText: 'Optional', hintText: '24DEMOTAX...'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
 
               const Text('Email (Optional)', style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),

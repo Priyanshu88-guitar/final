@@ -5,6 +5,9 @@ import '../../core/constants/app_spacing.dart';
 import '../../core/utils/validators.dart';
 import '../../widgets/common/voltera_button.dart';
 import '../../widgets/common/voltera_text_field.dart';
+import '../../data/services/api_service.dart';
+import 'package:latlong2/latlong.dart';
+import 'map_picker/provider_map_picker_screen.dart';
 
 class EditBusinessProfileScreen extends StatefulWidget {
   const EditBusinessProfileScreen({super.key});
@@ -19,6 +22,8 @@ class _EditBusinessProfileScreenState extends State<EditBusinessProfileScreen> {
   late TextEditingController _phoneController;
   late TextEditingController _emailController;
   late TextEditingController _addressController;
+  LatLng? _pinnedLocation;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -39,18 +44,66 @@ class _EditBusinessProfileScreenState extends State<EditBusinessProfileScreen> {
     super.dispose();
   }
 
-  void _onSaveBusinessProfile() {
+  Future<void> _onSaveBusinessProfile() async {
     if (_formKey.currentState?.validate() ?? false) {
-      VolteraSession().updateBusinessProfile(
-        name: _businessNameController.text.trim(),
-        phone: _phoneController.text.trim(),
-        bEmail: _emailController.text.trim(),
-        address: _addressController.text.trim(),
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Business profile updated successfully.')),
-      );
-      Navigator.pop(context);
+      if (_pinnedLocation == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select an exact map location for your station'), backgroundColor: Colors.red),
+        );
+        return;
+      }
+
+      setState(() {
+        _isSaving = true;
+      });
+
+      try {
+        final apiService = ApiService();
+
+        // 1. Save Profile
+        await apiService.post('/provider/profile', body: {
+          'businessName': _businessNameController.text.trim(),
+          'contactPhone': _phoneController.text.trim(),
+          'contactEmail': _emailController.text.trim(),
+          'address': _addressController.text.trim(),
+        });
+
+        // 2. Save Charging Station Location to Database so customers can see it on the map
+        await apiService.post('/provider/stations', body: {
+          'name': _businessNameController.text.trim(),
+          'address': _addressController.text.trim(),
+          'latitude': _pinnedLocation!.latitude,
+          'longitude': _pinnedLocation!.longitude,
+          'city': 'Ahmedabad',
+          'state': 'Gujarat',
+          'pincode': '380001',
+          'status': 'ACTIVE',
+        });
+
+        VolteraSession().updateBusinessProfile(
+          name: _businessNameController.text.trim(),
+          phone: _phoneController.text.trim(),
+          bEmail: _emailController.text.trim(),
+          address: _addressController.text.trim(),
+        );
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Business profile and station location stored in database successfully!')),
+        );
+        Navigator.pop(context);
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save profile: $e'), backgroundColor: Colors.red),
+        );
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isSaving = false;
+          });
+        }
+      }
     }
   }
 
@@ -118,17 +171,61 @@ class _EditBusinessProfileScreenState extends State<EditBusinessProfileScreen> {
                   hint: 'Enter full station address',
                   validator: (v) => Validators.validateRequired(v, fieldName: 'Station address'),
                 ),
+                const SizedBox(height: 16),
+                
+                const Text('Exact Map Location', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _pinnedLocation == null
+                              ? 'Pin charger location on map'
+                              : 'Lat: ${_pinnedLocation!.latitude.toStringAsFixed(4)}, Lng: ${_pinnedLocation!.longitude.toStringAsFixed(4)}',
+                          style: TextStyle(
+                            color: _pinnedLocation == null ? AppColors.textMuted : AppColors.textPrimary,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () async {
+                          final LatLng? result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ProviderMapPickerScreen(initialLocation: _pinnedLocation),
+                            ),
+                          );
+                          if (result != null) {
+                            setState(() {
+                              _pinnedLocation = result;
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.map, color: AppColors.primaryDarkGreen),
+                        label: Text(_pinnedLocation == null ? 'Set Pin' : 'Change', style: const TextStyle(color: AppColors.primaryDarkGreen)),
+                      ),
+                    ],
+                  ),
+                ),
+
                 const SizedBox(height: 36),
 
-                VolteraButton(
-                  text: 'Save Changes',
-                  onPressed: _onSaveBusinessProfile,
-                ),
-                const SizedBox(height: 12),
-
-                OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
+                SizedBox(
+                  width: double.infinity,
+                  child: VolteraButton(
+                    text: _isSaving ? 'Saving to Database...' : 'Save Business Profile',
+                    onPressed: _isSaving ? () {} : _onSaveBusinessProfile,
+                  ),
                 ),
               ],
             ),

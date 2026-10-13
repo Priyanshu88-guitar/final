@@ -95,3 +95,17 @@ export const saveProviderProfileSchema = z.object({
   description: z.string().trim().max(1000).optional().or(z.literal('')),
   logoImage: z.string().url('Invalid logo image URL').optional().or(z.literal('')),
 });
+
+export const saveCustomerVehicleSchema = z.object({
+  make: z.string().trim().min(1, 'Make is required'),
+  model: z.string().trim().min(1, 'Model is required'),
+  type: z.string().trim().min(1, 'Type is required').default('TWO_WHEELER'),
+  batteryCapacity: z.number().positive('Battery capacity must be positive').optional(),
+  connectorType: z.string().trim().optional(),
+  mileage: z.number().positive('Mileage must be positive').optional(),
+});
+
+export const saveProviderSetupPhotoSchema = z.object({
+  photoUrl: z.string().trim().min(1, 'Photo data/url is required'),
+  description: z.string().trim().optional(),
+});

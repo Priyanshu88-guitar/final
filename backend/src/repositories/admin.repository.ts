@@ -105,36 +105,38 @@ export class AdminRepository {
     return { items, total };
   }
 
-  async updateProviderVerification(adminId: string, providerUserId: string, status: string) {
+  async updateProviderVerification(adminId: string, providerUserId: string, status: string, setupStatus?: string) {
     return prisma.$transaction(async (tx) => {
       // Must verify the provider profile actually exists. Try to find it.
       let existing = await tx.providerProfile.findUnique({ where: { userId: providerUserId }});
 
-      // Since it's failing in tests natively checking provider endpoints properly through HTTP can lag or fail,
-      // let's gracefully ensure the profile exists or initialize an empty one for the user if they have the PROVIDER role.
       if (!existing) {
-         // See if they have the provider role
          const role = await tx.userRole.findUnique({ where: { userId_role: { userId: providerUserId, role: 'PROVIDER'} }});
          if (!role) {
              throw AppError.notFound('Provider profile not found and user does not hold PROVIDER role');
          }
 
-         // Create default empty profile just so verification can proceed for edge cases
          existing = await tx.providerProfile.create({
             data: {
                userId: providerUserId,
                businessName: 'Pending Profile Setup',
                address: 'Pending',
-               verificationStatus: 'PENDING'
+               verificationStatus: 'PENDING',
+               setupVerificationStatus: 'PENDING'
             }
          });
       }
 
+      const updateData: any = { verificationStatus: status };
+      if (setupStatus) {
+        updateData.setupVerificationStatus = setupStatus;
+      }
+
       const provider = await tx.providerProfile.update({
         where: { userId: providerUserId },
-        data: { verificationStatus: status }
+        data: updateData
       });
-      await this.logAction(adminId, 'VERIFY_PROVIDER', 'PROVIDER_PROFILE', provider.id, { newStatus: status });
+      await this.logAction(adminId, 'VERIFY_PROVIDER', 'PROVIDER_PROFILE', provider.id, { newStatus: status, newSetupStatus: setupStatus });
       return provider;
     });
   }

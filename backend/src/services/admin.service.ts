@@ -55,8 +55,8 @@ export class AdminService {
     };
   }
 
-  async updateProviderVerification(adminId: string, providerUserId: string, status: string) {
-    const updated = await adminRepository.updateProviderVerification(adminId, providerUserId, status);
+  async updateProviderVerification(adminId: string, providerUserId: string, status: string, setupStatus?: string) {
+    const updated = await adminRepository.updateProviderVerification(adminId, providerUserId, status, setupStatus);
 
     await notificationService.sendNotification({
       recipientUserId: providerUserId,

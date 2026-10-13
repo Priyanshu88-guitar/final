@@ -3,7 +3,6 @@ import '../../models/admin/admin_statistics.dart';
 import '../../models/admin/admin_charger.dart';
 import '../../models/admin/admin_session.dart';
 import '../../models/admin/admin_revenue.dart';
-import '../../models/user_role.dart';
 import '../services/api_service.dart';
 
 abstract class AdminRepository {
@@ -61,30 +60,9 @@ class AdminRepositoryImpl implements AdminRepository {
       if (data is List) {
         return data.map((item) {
           if (item is Map<String, dynamic>) {
-            final roles = item['roles'] as List?;
-            String roleStr = 'customer';
-            if (roles != null && roles.isNotEmpty) {
-              final firstRole = roles.first;
-              if (firstRole is Map<String, dynamic>) {
-                roleStr = (firstRole['role'] as String? ?? 'CUSTOMER').toLowerCase();
-              }
-            }
-            final role = UserRole.values.firstWhere(
-              (e) => e.name == roleStr,
-              orElse: () => UserRole.customer,
-            );
-
-            return AdminUser(
-              id: item['id'] as String? ?? '',
-              email: item['email'] as String? ?? item['phoneNumber'] as String? ?? '',
-              role: role,
-              isActive: item['accountStatus'] == 'ACTIVE',
-              createdAt: item['createdAt'] != null
-                  ? DateTime.parse(item['createdAt'])
-                  : DateTime.now(),
-            );
+            return AdminUser.fromJson(item);
           }
-          return AdminUser.fromJson(item);
+          return AdminUser.fromJson({});
         }).toList();
       }
       return [];

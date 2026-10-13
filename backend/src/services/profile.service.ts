@@ -260,6 +260,56 @@ export class ProfileService {
     });
     return { message: 'Saved charger removed successfully' };
   }
+
+  async getCustomerVehicles(userId: string) {
+    const profile = await customerProfileRepository.findByUserId(userId);
+    if (!profile) throw AppError.notFound('Customer profile not found');
+
+    return prisma.customerVehicle.findMany({
+      where: { customerProfileId: profile.id },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  async addCustomerVehicle(userId: string, input: any) {
+    const profile = await customerProfileRepository.findByUserId(userId);
+    if (!profile) throw AppError.notFound('Customer profile not found. Please complete profile setup first.');
+
+    return prisma.customerVehicle.create({
+      data: {
+        customerProfileId: profile.id,
+        make: input.make,
+        model: input.model,
+        type: input.type || 'TWO_WHEELER',
+        batteryCapacity: input.batteryCapacity,
+        connectorType: input.connectorType,
+        mileage: input.mileage,
+      }
+    });
+  }
+
+  async getProviderSetupPhotos(userId: string) {
+    const profile = await providerProfileRepository.findByUserId(userId);
+    if (!profile) throw AppError.notFound('Provider profile not found');
+
+    return prisma.providerSetupPhoto.findMany({
+      where: { providerProfileId: profile.id },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  async addProviderSetupPhoto(userId: string, input: any) {
+    const profile = await providerProfileRepository.findByUserId(userId);
+    if (!profile) throw AppError.notFound('Provider profile not found. Please complete profile setup first.');
+
+    return prisma.providerSetupPhoto.create({
+      data: {
+        providerProfileId: profile.id,
+        photoUrl: input.photoUrl,
+        description: input.description,
+      }
+    });
+  }
 }
 
 export const profileService = new ProfileService();

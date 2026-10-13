@@ -108,8 +108,27 @@ model CustomerProfile {
   updatedAt    DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicles CustomerVehicle[]
 
   @@map("customer_profiles")
+}
+
+model CustomerVehicle {
+  id               String   @id @default(uuid())
+  customerProfileId String
+  make             String
+  model            String
+  type             String   // e.g., "TWO_WHEELER"
+  batteryCapacity  Float?   // in kWh
+  connectorType    String?  // e.g., "TYPE2", "CCS2", "3PIN"
+  mileage          Float?   // estimated range on full charge
+  verificationStatus String @default("PENDING") // PENDING, VERIFIED, REJECTED
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  customerProfile CustomerProfile @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+
+  @@map("customer_vehicles")
 }
 
 model ProviderProfile {
@@ -124,14 +143,28 @@ model ProviderProfile {
   pincode            String?
   taxId              String?
   description        String?
-  verificationStatus String   @default("PENDING")
+  verificationStatus String   @default("PENDING") // For basic info
+  setupVerificationStatus String @default("PENDING") // For the charger photos setup
   logoImage          String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  setupPhotos ProviderSetupPhoto[]
 
   @@map("provider_profiles")
+}
+
+model ProviderSetupPhoto {
+  id                String   @id @default(uuid())
+  providerProfileId String
+  photoUrl          String   // We will store base64 strings or local server file paths here
+  description       String?
+  createdAt         DateTime @default(now())
+
+  providerProfile ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+
+  @@map("provider_setup_photos")
 }
 
 model ChargingStation {
@@ -149,12 +182,12 @@ model ChargingStation {
   updatedAt   DateTime @updatedAt
 
   provider    User      @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  chargers    Charger[]
+  chargers    Chargers[]
 
   @@map("charging_stations")
 }
 
-model Charger {
+model Chargers {
   id            String   @id @default(uuid())
   stationId     String
   chargerCode   String   @unique
@@ -187,7 +220,7 @@ model Booking {
   updatedAt   DateTime @updatedAt
 
   customer    User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  charger     Charger  @relation(fields: [chargerId], references: [id], onDelete: Cascade)
+  charger     Chargers  @relation(fields: [chargerId], references: [id], onDelete: Cascade)
   session     ChargingSession?
   payments    Payment[]
 
@@ -206,7 +239,7 @@ model ChargingSession {
   updatedAt   DateTime @updatedAt
 
   booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  charger     Charger  @relation(fields: [chargerId], references: [id], onDelete: Cascade)
+  charger     Chargers  @relation(fields: [chargerId], references: [id], onDelete: Cascade)
   customer    User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
   payments    Payment[]
 
@@ -472,7 +505,7 @@ model SavedCharger {
   createdAt  DateTime @default(now())
 
   customer   User    @relation("CustomerSavedChargers", fields: [customerId], references: [id], onDelete: Cascade)
-  charger    Charger @relation(fields: [chargerId], references: [id], onDelete: Cascade)
+  charger    Chargers @relation(fields: [chargerId], references: [id], onDelete: Cascade)
 
   @@unique([customerId, chargerId])
   @@map("saved_chargers")

@@ -82,9 +82,19 @@ export const signupSchema = z.object({
   phone: phoneTransform,
   email: z.string().email('Invalid email address format').optional().or(z.literal('')),
   password: passwordSchema,
-  role: z.enum(['CUSTOMER', 'PROVIDER', 'customer', 'provider'], {
-    errorMap: () => ({ message: 'Public signup only allows CUSTOMER or PROVIDER roles' }),
-  }).transform((val) => val.toUpperCase() as 'CUSTOMER' | 'PROVIDER'),
+  role: z.enum(['CUSTOMER', 'PROVIDER', 'customer', 'provider', 'SERVICE_PROVIDER', 'service_provider', 'service provider', 'SERVICE PROVIDER'], {
+      errorMap: () => ({ message: 'Public signup only allows CUSTOMER or PROVIDER roles' }),
+    }).transform((val) => {
+      const upper = val.toUpperCase();
+      if (upper.includes('PROVIDER') || upper.includes('SERVICE')) return 'PROVIDER';
+      return 'CUSTOMER';
+    }),
+  businessName: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  pincode: z.string().optional(),
+  taxId: z.string().optional(),
 });
 
 export const verifyOtpSchema = z.object({

@@ -8,6 +8,7 @@ import { validate } from '../middleware/validate.middleware.js';
 import { saveProviderProfileSchema } from '../validators/profile.validator.js';
 import { createStationSchema, updateStationSchema, createChargerSchema, updateChargerSchema } from '../validators/station.validator.js';
 import { saveBankAccountSchema, requestPayoutSchema } from '../validators/payment.validator.js';
+import { saveProviderSetupPhotoSchema } from '../validators/profile.validator.js';
 
 const router = Router();
 
@@ -19,6 +20,10 @@ router.get('/profile', profileController.getProviderProfile);
 router.post('/profile', validate({ body: saveProviderProfileSchema }), profileController.saveProviderProfile);
 router.put('/profile', validate({ body: saveProviderProfileSchema }), profileController.saveProviderProfile);
 router.patch('/profile', validate({ body: saveProviderProfileSchema }), profileController.saveProviderProfile);
+
+// Setup Verification Photos
+router.get('/setup-photos', profileController.getProviderSetupPhotos);
+router.post('/setup-photos', validate({ body: saveProviderSetupPhotoSchema }), profileController.uploadProviderSetupPhoto);
 
 // Station Management Endpoints
 router.post('/stations', validate({ body: createStationSchema }), stationController.createStation);

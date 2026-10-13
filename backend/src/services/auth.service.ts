@@ -13,6 +13,12 @@ export interface SignupInput {
   email?: string;
   password: string;
   role: 'CUSTOMER' | 'PROVIDER';
+  businessName?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  taxId?: string;
 }
 
 export interface AuthResponseData {
@@ -87,23 +93,30 @@ export class AuthService {
       userId = newUser.id;
     }
 
-    // Automatically approve provider registration for demo mode
+    // Automatically set provider verification status to PENDING for verification workflow
     if (targetRole === 'PROVIDER') {
       await prisma.providerProfile.upsert({
         where: { userId },
         create: {
           userId,
-          businessName: input.fullName || 'My EV Business',
+          businessName: input.businessName || input.fullName || 'My EV Business',
           contactPhone: normalizedPhone,
           contactEmail: input.email || null,
-          address: 'Demo Address, Ahmedabad',
-          city: 'Ahmedabad',
-          state: 'Gujarat',
-          pincode: '380001',
-          verificationStatus: 'VERIFIED',
+          address: input.address || 'Demo Address, Ahmedabad',
+          city: input.city || 'Ahmedabad',
+          state: input.state || 'Gujarat',
+          pincode: input.pincode || '380001',
+          taxId: input.taxId || null,
+          verificationStatus: 'PENDING',
         },
         update: {
-          verificationStatus: 'VERIFIED',
+          businessName: input.businessName || input.fullName || 'My EV Business',
+          address: input.address || 'Demo Address, Ahmedabad',
+          city: input.city || 'Ahmedabad',
+          state: input.state || 'Gujarat',
+          pincode: input.pincode || '380001',
+          taxId: input.taxId || null,
+          verificationStatus: 'PENDING',
         },
       });
     } else if (targetRole === 'CUSTOMER') {

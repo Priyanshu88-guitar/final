@@ -4,7 +4,7 @@ import '../../app/session.dart';
 import '../../models/user_role.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
-import '../../widgets/common/status_badge.dart';
+import 'verification/provider_setup_verification_screen.dart';
 
 class ProviderBusinessScreen extends StatelessWidget {
   const ProviderBusinessScreen({super.key});
@@ -135,16 +135,12 @@ class ProviderBusinessScreen extends StatelessWidget {
                     const Divider(height: 1, indent: 16),
                     ListTile(
                       title: const Text(
-                        'Verification',
+                        'Setup Verification Photos',
                         style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                       ),
-                      trailing: const StatusBadge(
-                        label: 'Verified',
-                        backgroundColor: Color(0xFFE2EFC5),
-                        textColor: AppColors.primaryDarkGreen,
-                      ),
+                      trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
                       onTap: () {
-                        Navigator.pushNamed(context, AppRoutes.providerDocuments);
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ProviderSetupVerificationScreen()));
                       },
                     ),
                     const Divider(height: 1, indent: 16),

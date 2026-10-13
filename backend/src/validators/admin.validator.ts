@@ -6,4 +6,5 @@ export const updateAccountStatusSchema = z.object({
 
 export const updateProviderVerificationSchema = z.object({
   status: z.enum(['PENDING', 'VERIFIED', 'REJECTED']),
+  setupStatus: z.enum(['PENDING', 'VERIFIED', 'REJECTED']).optional(),
 });

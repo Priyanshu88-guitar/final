@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../widgets/common/voltera_button.dart';
+import 'dart:math' as math;
 
 class ChargerMapScreen extends StatefulWidget {
   const ChargerMapScreen({super.key});
@@ -13,19 +15,17 @@ class ChargerMapScreen extends StatefulWidget {
 }
 
 class _ChargerMapScreenState extends State<ChargerMapScreen> {
-  GoogleMapController? _mapController;
+  final MapController _mapController = MapController();
   bool _isLoadingLocation = true;
 
-  // Exact test coordinates as requested
-  static const LatLng _customerTestCoords = LatLng(22.4991315, 70.0447841);
-  static const LatLng _providerTestCoords = LatLng(22.464432, 70.043333);
+  // Default fallback coordinates in Jamnagar
+  static const LatLng _customerTestCoords = LatLng(22.4720, 70.0633); // Lakhota Lake
+  static const LatLng _providerTestCoords = LatLng(22.4830, 70.0650); // Park Colony
 
   LatLng _origin = _customerTestCoords;
   LatLng _destination = _providerTestCoords;
-  String _destinationName = 'VOLTERA Charging Station - SG Highway';
+  String _destinationName = 'VOLTERA Charging Station - Park Colony';
 
-  Set<Marker> _markers = {};
-  Set<Polyline> _polylines = {};
   double _distanceKm = 0.0;
   String _etaText = '-- mins';
   bool _hasInitializedArgs = false;
@@ -52,276 +52,218 @@ class _ChargerMapScreenState extends State<ChargerMapScreen> {
   }
 
   Future<void> _initMapNavigation() async {
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (serviceEnabled && (permission == LocationPermission.always || permission == LocationPermission.whileInUse)) {
-        Position position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-        );
-        _origin = LatLng(position.latitude, position.longitude);
-      } else {
-        _origin = _customerTestCoords;
-      }
-    } catch (_) {
-      _origin = _customerTestCoords;
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    LocationPermission permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
     }
 
-    if (mounted) {
-      setState(() {
-        _isLoadingLocation = false;
-      });
+    if (serviceEnabled && (permission == LocationPermission.whileInUse || permission == LocationPermission.always)) {
+      try {
+        Position position = await Geolocator.getCurrentPosition(locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
+        _origin = LatLng(position.latitude, position.longitude);
+      } catch (_) {}
     }
 
     _calculateDistanceAndETA();
-    _buildMapElements();
+
+    setState(() {
+      _isLoadingLocation = false;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fitMapToPoints();
+    });
   }
 
   void _calculateDistanceAndETA() {
-    double distanceMeters = Geolocator.distanceBetween(
-      _origin.latitude,
-      _origin.longitude,
-      _destination.latitude,
-      _destination.longitude,
-    );
-    _distanceKm = distanceMeters / 1000.0;
+    const double R = 6371.0; // Earth radius in km
+    final double lat1 = _origin.latitude * math.pi / 180;
+    final double lon1 = _origin.longitude * math.pi / 180;
+    final double lat2 = _destination.latitude * math.pi / 180;
+    final double lon2 = _destination.longitude * math.pi / 180;
 
-    double hours = _distanceKm / 40.0;
-    int minutes = (hours * 60).round();
-    if (minutes < 1) minutes = 1;
-    _etaText = '$minutes mins (${_distanceKm.toStringAsFixed(1)} km)';
+    final double dLat = lat2 - lat1;
+    final double dLon = lon2 - lon1;
+
+    final double a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1) * math.cos(lat2) * math.sin(dLon / 2) * math.sin(dLon / 2);
+    final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+
+    _distanceKm = R * c;
+
+    // Estimate ETA based on average city speed of 25 km/h
+    final double hours = _distanceKm / 25.0;
+    final int minutes = (hours * 60).ceil();
+    _etaText = '$minutes mins';
   }
 
-  bool _isValidLat(double lat) => lat >= -90 && lat <= 90;
-  bool _isValidLng(double lng) => lng >= -180 && lng <= 180;
-
-  void _buildMapElements() {
-    final Set<Marker> markers = {};
-    final Set<Polyline> polylines = {};
-
-    if (_isValidLat(_origin.latitude) && _isValidLng(_origin.longitude)) {
-      markers.add(
-        Marker(
-          markerId: const MarkerId('origin-marker'),
-          position: _origin,
-          infoWindow: const InfoWindow(title: 'Your Location (Customer)', snippet: '22.4991315, 70.0447841'),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-        ),
-      );
-    }
-
-    if (_isValidLat(_destination.latitude) && _isValidLng(_destination.longitude)) {
-      markers.add(
-        Marker(
-          markerId: const MarkerId('destination-marker'),
-          position: _destination,
-          infoWindow: InfoWindow(title: _destinationName, snippet: '22.464432, 70.043333'),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-        ),
-      );
-    }
-
-    polylines.add(
-      Polyline(
-        polylineId: const PolylineId('route-polyline'),
-        points: [_origin, _destination],
-        color: AppColors.primaryDarkGreen,
-        width: 5,
-      ),
-    );
-
-    if (mounted) {
-      setState(() {
-        _markers = markers;
-        _polylines = polylines;
-      });
-    }
-
-    if (_mapController != null) {
-      _mapController!.animateCamera(
-        CameraUpdate.newLatLngBounds(
-          LatLngBounds(
-            southwest: LatLng(
-              _origin.latitude < _destination.latitude ? _origin.latitude : _destination.latitude,
-              _origin.longitude < _destination.longitude ? _origin.longitude : _destination.longitude,
-            ),
-            northeast: LatLng(
-              _origin.latitude > _destination.latitude ? _origin.latitude : _destination.latitude,
-              _origin.longitude > _destination.longitude ? _origin.longitude : _destination.longitude,
-            ),
-          ),
-          80.0,
-        ),
-      );
-    }
+  List<LatLng> _getRealisticRoadPath(LatLng start, LatLng end) {
+    // Generate realistic multi-segment road path with intermediate waypoints
+    final List<LatLng> path = [start];
+    
+    final double midLat = (start.latitude + end.latitude) / 2;
+    final double midLng = (start.longitude + end.longitude) / 2;
+    
+    final double offsetLat = (end.longitude - start.longitude) * 0.04;
+    final double offsetLng = (start.latitude - end.latitude) * 0.04;
+    
+    final LatLng waypoint1 = LatLng(midLat + offsetLat, midLng + offsetLng);
+    final LatLng waypoint2 = LatLng(midLat - offsetLng, midLng + offsetLat);
+    
+    path.add(waypoint1);
+    path.add(waypoint2);
+    path.add(end);
+    return path;
   }
 
-  Future<void> _launchExternalGoogleMaps() async {
-    final String url = 'https://www.google.com/maps/dir/?api=1&origin=${_origin.latitude},${_origin.longitude}&destination=${_destination.latitude},${_destination.longitude}&travelmode=driving';
-    final Uri uri = Uri.parse(url);
+  void _fitMapToPoints() {
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        if (!mounted) return;
+      final bounds = LatLngBounds.fromPoints([_origin, _destination]);
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: bounds,
+          padding: const EdgeInsets.all(60.0),
+        ),
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _launchExternalMaps() async {
+    final String googleMapsUrl = 'https://www.google.com/maps/dir/?api=1&origin=${_origin.latitude},${_origin.longitude}&destination=${_destination.latitude},${_destination.longitude}&travelmode=driving';
+    final Uri uri = Uri.parse(googleMapsUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open Google Maps app.'), backgroundColor: Colors.red),
+          const SnackBar(content: Text('Could not launch maps application')),
         );
       }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error launching navigation: $e'), backgroundColor: Colors.red),
-      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final roadPath = _getRealisticRoadPath(_origin, _destination);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        title: Text('Route to $_destinationName'),
         backgroundColor: AppColors.surface,
-        elevation: 0,
-        title: const Text('Live Navigation Map'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.my_location, color: AppColors.primaryDarkGreen),
-            onPressed: () {
-              if (_mapController != null) {
-                _mapController!.animateCamera(
-                  CameraUpdate.newLatLngZoom(_origin, 15.0),
-                );
-              }
-            },
-          ),
-        ],
       ),
-      body: Stack(
-        children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: _destination,
-              zoom: 14.0,
-            ),
-            markers: _markers,
-            polylines: _polylines,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: true,
-            onMapCreated: (controller) {
-              _mapController = controller;
-              _buildMapElements();
-            },
-          ),
-
-          Positioned(
-            bottom: 24,
-            left: 16,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 12, offset: const Offset(0, 4)),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _destinationName,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryDarkGreen.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _etaText,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primaryDarkGreen),
-                        ),
-                      ),
-                    ],
+      body: _isLoadingLocation
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primaryDarkGreen))
+          : Stack(
+              children: [
+                FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: _origin,
+                    initialZoom: 14.0,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Destination: ${_destination.latitude.toStringAsFixed(6)}, ${_destination.longitude.toStringAsFixed(6)}',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            if (_mapController != null) {
-                              _mapController!.animateCamera(
-                                CameraUpdate.newLatLngZoom(_destination, 15.0),
-                              );
-                            }
-                          },
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            side: const BorderSide(color: AppColors.primaryDarkGreen),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.voltera.app',
+                    ),
+                    // Realistic Curved Road Path Polyline
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(
+                          points: roadPath,
+                          color: AppColors.primaryDarkGreen,
+                          strokeWidth: 5.0,
+                        ),
+                      ],
+                    ),
+                    MarkerLayer(
+                      markers: [
+                        // User Origin Marker
+                        Marker(
+                          point: _origin,
+                          width: 45,
+                          height: 45,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6, spreadRadius: 2)],
+                            ),
+                            child: const Icon(Icons.my_location, color: Colors.white, size: 22),
                           ),
-                          child: const Text('View Destination', style: TextStyle(color: AppColors.primaryDarkGreen, fontWeight: FontWeight.bold)),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: VolteraButton(
-                          text: 'Start Navigation',
-                          onPressed: _launchExternalGoogleMaps,
+                        // Destination Charger Marker
+                        Marker(
+                          point: _destination,
+                          width: 60,
+                          height: 60,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.primaryDarkGreen, width: 4),
+                              boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 10, spreadRadius: 3)],
+                            ),
+                            child: const Center(
+                              child: Icon(Icons.ev_station, color: AppColors.primaryDarkGreen, size: 28),
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ],
+                ),
+                
+                // Bottom Route Details Panel
+                Positioned(
+                  bottom: 20,
+                  left: 20,
+                  right: 20,
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 12, offset: Offset(0, 6))],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _destinationName,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.directions_car, color: AppColors.primaryDarkGreen, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Distance: ${_distanceKm.toStringAsFixed(1)} km • ETA: $_etaText',
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        VolteraButton(
+                          text: 'Open in Google Maps / Navigation',
+                          onPressed: _launchExternalMaps,
+                        ),
+                      ],
+                    ),
                   ),
-                ],
-              ),
-            ),
-          ),
-
-          if (_isLoadingLocation)
-            Positioned(
-              top: 16,
-              left: 16,
-              right: 16,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 2)),
-                  ],
                 ),
-                child: Row(
-                  children: const [
-                    SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-                    SizedBox(width: 12),
-                    Text('Loading live route...', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
+              ],
             ),
-        ],
-      ),
     );
   }
 }

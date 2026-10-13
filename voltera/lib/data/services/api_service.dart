@@ -18,14 +18,22 @@ class ApiException implements Exception {
 }
 
 class ApiService {
+  // 1. Add this static instance
+  static final ApiService _instance = ApiService._internal();
+
+  // 2. Change your default constructor to a factory
+  factory ApiService() {
+    return _instance;
+  }
+
   final String baseUrl;
   final http.Client _client;
   String? _authToken;
 
-  ApiService({
+  // 3. Make the internal constructor private
+  ApiService._internal({
     String? baseUrl,
     http.Client? client,
-    this._authToken,
   })  : baseUrl = baseUrl ?? _defaultBaseUrl(),
         _client = client ?? http.Client();
 
@@ -33,11 +41,13 @@ class ApiService {
     if (kIsWeb) {
       return 'http://localhost:3000/api/v1';
     } else if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://172.26.20.215:3000/api/v1';
+      return 'http://10.239.139.74:3000/api/v1';
     } else {
       return 'http://localhost:3000/api/v1';
     }
   }
+
+  // ... keep the rest of your exact code (setAuthToken, _buildHeaders, etc.) below this line!
 
   void setAuthToken(String? token) {
     _authToken = token;
@@ -103,8 +113,16 @@ class ApiService {
       } else if (body['error'] is Map<String, dynamic> && body['error']['message'] is String) {
         errorMessage = body['error']['message'];
       }
-      details = body['details'] ?? body['error'];
+      
+      // FIX: extract details array if available
+      if (body['error'] is Map<String, dynamic> && body['error']['details'] != null) {
+        details = body['error']['details'];
+      } else {
+        details = body['details'] ?? body['error'];
+      }
     }
+
+    debugPrint('API Error details: $details');
 
     throw ApiException(
       statusCode: response.statusCode,

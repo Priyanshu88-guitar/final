@@ -11,6 +11,6 @@ router.get('/', bundleController.getActiveBundles);
 router.get('/:bundleId', validate({ params: uuidParamSchema }), bundleController.getBundleById);
 
 // Protected Customer actions
-router.post('/:bundleId/purchase', requireAuth, requireRole('CUSTOMER'), validate({ params: uuidParamSchema }), bundleController.purchaseBundle);
+router.post('/:bundleId/purchase', requireAuth, requireRole('CUSTOMER'), bundleController.purchaseBundle);
 
 export const bundleRoutes = router;

@@ -8,7 +8,6 @@ import '../../../core/utils/validators.dart';
 import '../../../widgets/common/voltera_button.dart';
 import '../../../widgets/common/voltera_text_field.dart';
 import '../../../data/services/api_service.dart';
-import '../../../data/repositories/auth_repository.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -84,19 +83,26 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
       final finalName = _nameController.text.trim().isEmpty ? (name.isEmpty ? 'User' : name) : _nameController.text.trim();
       final finalEmail = _emailController.text.trim().isEmpty ? (email.isEmpty ? 'customer@voltera.com' : email) : _emailController.text.trim();
-      final finalPassword = password.isEmpty ? 'Voltera@123' : password;
 
       try {
-        final authRepo = AuthRepositoryImpl(apiService: ApiService());
-        await authRepo.signup(
-          finalEmail,
-          finalPassword,
-          role,
-          phone: mobile,
-          name: finalName,
-        );
+        final apiService = ApiService();
+        if (role == UserRole.provider) {
+          await apiService.put('/provider/profile', body: {
+            'businessName': finalName,
+            'contactEmail': finalEmail,
+            'address': 'Demo Address',
+            'city': 'Ahmedabad',
+          });
+        } else {
+          await apiService.put('/customer/profile', body: {
+            'fullName': finalName,
+            'city': 'Ahmedabad',
+            'state': 'Gujarat',
+            'pincode': '380001',
+          });
+        }
       } catch (e) {
-        debugPrint('Backend signup creation error: $e');
+        debugPrint('Backend profile update error: $e');
       } finally {
         if (mounted) {
           setState(() {
@@ -127,19 +133,26 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
     final finalName = name.isEmpty ? 'User' : name;
     final finalEmail = email.isEmpty ? 'customer@voltera.com' : email;
-    final finalPassword = password.isEmpty ? 'Voltera@123' : password;
 
     try {
-      final authRepo = AuthRepositoryImpl(apiService: ApiService());
-      await authRepo.signup(
-        finalEmail,
-        finalPassword,
-        role,
-        phone: mobile,
-        name: finalName,
-      );
+      final apiService = ApiService();
+      if (role == UserRole.provider) {
+        await apiService.put('/provider/profile', body: {
+          'businessName': finalName,
+          'contactEmail': finalEmail,
+          'address': 'Demo Address',
+          'city': 'Ahmedabad',
+        });
+      } else {
+        await apiService.put('/customer/profile', body: {
+          'fullName': finalName,
+          'city': 'Ahmedabad',
+          'state': 'Gujarat',
+          'pincode': '380001',
+        });
+      }
     } catch (e) {
-      debugPrint('Skip signup API error: $e');
+      debugPrint('Skip profile update error: $e');
     } finally {
       if (mounted) {
         setState(() {

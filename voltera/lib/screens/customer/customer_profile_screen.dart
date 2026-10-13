@@ -5,6 +5,7 @@ import '../../models/user_role.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../widgets/common/account_switch_helper.dart';
+import 'vehicle/customer_vehicles_screen.dart';
 
 class CustomerProfileScreen extends StatelessWidget {
   const CustomerProfileScreen({super.key});
@@ -175,6 +176,15 @@ class CustomerProfileScreen extends StatelessWidget {
                       title: 'Notification',
                       onTap: () {
                         Navigator.pushNamed(context, AppRoutes.customerNotifications);
+                      },
+                    ),
+                    const Divider(height: 1, indent: 56),
+                    _ProfileMenuItem(
+                      icon: Icons.electric_scooter,
+                      iconColor: AppColors.primaryDarkGreen,
+                      title: 'My Vehicles',
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerVehiclesScreen()));
                       },
                     ),
                     const Divider(height: 1, indent: 56),

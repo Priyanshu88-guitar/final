@@ -10,7 +10,7 @@ async function startServer(): Promise<void> {
     logger.warn('⚠️ Server starting with database disconnected/unreachable.');
   }
 
-  const server = app.listen(env.PORT, () => {
+  const server = app.listen(env.PORT, '0.0.0.0', () => {
     logger.info(`🚀 VOLTERA Backend API running on port ${env.PORT} [${env.APP_ENV}]`);
     logger.info(`👉 Health Check: http://localhost:${env.PORT}/health`);
   });

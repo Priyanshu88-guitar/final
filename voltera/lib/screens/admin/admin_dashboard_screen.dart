@@ -3,9 +3,32 @@ import '../../app/routes.dart';
 import '../../app/session.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/constants/app_spacing.dart';
+import '../../data/services/api_service.dart';
+import '../../data/repositories/admin_repository.dart';
+import '../../models/admin/admin_statistics.dart';
 
-class AdminDashboardScreen extends StatelessWidget {
+class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
+
+  @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  late Future<AdminStatistics> _statsFuture;
+  final AdminRepository _adminRepository = AdminRepositoryImpl(apiService: ApiService());
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  void _loadStats() {
+    setState(() {
+      _statsFuture = _adminRepository.getAdminStatistics();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,149 +40,163 @@ class AdminDashboardScreen extends StatelessWidget {
         title: const Text('Admin Dashboard', style: TextStyle(color: AppColors.white)),
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh, color: AppColors.white),
+            onPressed: _loadStats,
+          ),
+          IconButton(
             icon: const Icon(Icons.settings, color: AppColors.white),
             onPressed: () => Navigator.pushNamed(context, AppRoutes.adminSettings),
           ),
         ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.screenHorizontalPadding),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'VOLTERA System Overview',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.white),
-              ),
-              const SizedBox(height: 20),
+        child: FutureBuilder<AdminStatistics>(
+          future: _statsFuture,
+          builder: (context, snapshot) {
+            final usersVal = '14';            // Fake user count
+            final chargersVal = '6';          // Fake active chargers
+            final bookingsVal = '3';          // Fake live sessions
+            final revenueVal = '₹ 4,250';     // Fake revenue
 
-              // Overview Cards Grid
-              GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.4,
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(AppSpacing.screenHorizontalPadding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _DashboardCard(
-                    title: 'Users',
-                    value: '--',
-                    subtitle: 'Customers & Providers',
-                    icon: Icons.people,
-                    onTap: () => Navigator.pushNamed(context, AppRoutes.adminUsers),
+                  const Text(
+                    'VOLTERA System Overview',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.white),
                   ),
-                  _DashboardCard(
-                    title: 'Chargers',
-                    value: '--',
-                    subtitle: 'Active & Pending',
-                    icon: Icons.ev_station,
-                    onTap: () => Navigator.pushNamed(context, AppRoutes.adminChargers),
+                  const SizedBox(height: 20),
+
+                  // Overview Cards Grid
+                  GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.4,
+                    children: [
+                      _DashboardCard(
+                        title: 'Users',
+                        value: usersVal,
+                        subtitle: 'Customers & Providers',
+                        icon: Icons.people,
+                        onTap: () => Navigator.pushNamed(context, AppRoutes.adminUsers),
+                      ),
+                      _DashboardCard(
+                        title: 'Chargers',
+                        value: chargersVal,
+                        subtitle: 'Active & Stations',
+                        icon: Icons.ev_station,
+                        onTap: () => Navigator.pushNamed(context, AppRoutes.adminChargers),
+                      ),
+                      _DashboardCard(
+                        title: 'Bookings',
+                        value: bookingsVal,
+                        subtitle: 'Active Sessions',
+                        icon: Icons.bolt,
+                        onTap: () => Navigator.pushNamed(context, AppRoutes.adminSessions),
+                      ),
+                      _DashboardCard(
+                        title: 'Transactions',
+                        value: revenueVal,
+                        subtitle: 'Gross Revenue',
+                        icon: Icons.receipt_long,
+                        onTap: () => Navigator.pushNamed(context, AppRoutes.adminTransactions),
+                      ),
+                    ],
                   ),
-                  _DashboardCard(
-                    title: 'Bookings',
-                    value: '--',
-                    subtitle: 'Active & Completed',
-                    icon: Icons.bolt,
-                    onTap: () => Navigator.pushNamed(context, AppRoutes.adminSessions),
+                  const SizedBox(height: 28),
+
+                  const Text(
+                    'Console Management',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.white),
                   ),
-                  _DashboardCard(
-                    title: 'Transactions',
-                    value: '₹--',
-                    subtitle: 'Payments & Revenue',
-                    icon: Icons.receipt_long,
-                    onTap: () => Navigator.pushNamed(context, AppRoutes.adminTransactions),
+                  const SizedBox(height: 16),
+
+                  // Navigation Tiles List
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      children: [
+                        _AdminNavTile(
+                          icon: Icons.people_outline,
+                          title: 'Manage Users',
+                          subtitle: 'View user accounts & verification',
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.adminUsers),
+                        ),
+                        const Divider(height: 1, indent: 56),
+                        _AdminNavTile(
+                          icon: Icons.business_outlined,
+                          title: 'Manage Providers',
+                          subtitle: 'Provider verification & documents',
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.adminProviders),
+                        ),
+                        const Divider(height: 1, indent: 56),
+                        _AdminNavTile(
+                          icon: Icons.ev_station_outlined,
+                          title: 'Manage Chargers',
+                          subtitle: 'Approve & monitor charging stations',
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.adminChargers),
+                        ),
+                        const Divider(height: 1, indent: 56),
+                        _AdminNavTile(
+                          icon: Icons.history_outlined,
+                          title: 'Charging Sessions',
+                          subtitle: 'Live session monitoring & history',
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.adminSessions),
+                        ),
+                        const Divider(height: 1, indent: 56),
+                        _AdminNavTile(
+                          icon: Icons.monetization_on_outlined,
+                          title: 'Payments & Transactions',
+                          subtitle: 'Platform revenue & payouts',
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.adminTransactions),
+                        ),
+                        const Divider(height: 1, indent: 56),
+                        _AdminNavTile(
+                          icon: Icons.report_problem_outlined,
+                          title: 'Reports & Issues',
+                          subtitle: 'User reports, charger & payment issues',
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.adminReports),
+                        ),
+                        const Divider(height: 1, indent: 56),
+                        _AdminNavTile(
+                          icon: Icons.settings_outlined,
+                          title: 'Admin Settings',
+                          subtitle: 'System security & configuration',
+                          onTap: () => Navigator.pushNamed(context, AppRoutes.adminSettings),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  Center(
+                    child: TextButton(
+                      onPressed: () {
+                        VolteraSession().logout();
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          AppRoutes.welcome,
+                          (route) => false,
+                        );
+                      },
+                      child: const Text(
+                        'Logout Admin',
+                        style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 28),
-
-              const Text(
-                'Console Management',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.white),
-              ),
-              const SizedBox(height: 16),
-
-              // Navigation Tiles List
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Column(
-                  children: [
-                    _AdminNavTile(
-                      icon: Icons.people_outline,
-                      title: 'Manage Users',
-                      subtitle: 'View user accounts & verification',
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.adminUsers),
-                    ),
-                    const Divider(height: 1, indent: 56),
-                    _AdminNavTile(
-                      icon: Icons.business_outlined,
-                      title: 'Manage Providers',
-                      subtitle: 'Provider verification & documents',
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.adminProviders),
-                    ),
-                    const Divider(height: 1, indent: 56),
-                    _AdminNavTile(
-                      icon: Icons.ev_station_outlined,
-                      title: 'Manage Chargers',
-                      subtitle: 'Approve & monitor charging stations',
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.adminChargers),
-                    ),
-                    const Divider(height: 1, indent: 56),
-                    _AdminNavTile(
-                      icon: Icons.history_outlined,
-                      title: 'Charging Sessions',
-                      subtitle: 'Live session monitoring & history',
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.adminSessions),
-                    ),
-                    const Divider(height: 1, indent: 56),
-                    _AdminNavTile(
-                      icon: Icons.monetization_on_outlined,
-                      title: 'Payments & Transactions',
-                      subtitle: 'Platform revenue & payouts',
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.adminTransactions),
-                    ),
-                    const Divider(height: 1, indent: 56),
-                    _AdminNavTile(
-                      icon: Icons.report_problem_outlined,
-                      title: 'Reports & Issues',
-                      subtitle: 'User reports, charger & payment issues',
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.adminReports),
-                    ),
-                    const Divider(height: 1, indent: 56),
-                    _AdminNavTile(
-                      icon: Icons.settings_outlined,
-                      title: 'Admin Settings',
-                      subtitle: 'System security & configuration',
-                      onTap: () => Navigator.pushNamed(context, AppRoutes.adminSettings),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              Center(
-                child: TextButton(
-                  onPressed: () {
-                    VolteraSession().logout();
-                    Navigator.pushNamedAndRemoveUntil(
-                      context,
-                      AppRoutes.welcome,
-                      (route) => false,
-                    );
-                  },
-                  child: const Text(
-                    'Logout Admin',
-                    style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
