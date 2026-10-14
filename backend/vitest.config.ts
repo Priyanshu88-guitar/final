@@ -7,6 +7,7 @@ export default defineConfig({
     maxWorkers: 1,
     env: {
       APP_ENV: 'test',
+      DATABASE_URL: 'file:./dev.db',
       JWT_SECRET: 'test-jwt-secret-key-minimum-32-chars-long',
       REFRESH_TOKEN_SECRET: 'test-refresh-secret-key-32-chars-long',
       PAYMENT_PROVIDER: 'mock',

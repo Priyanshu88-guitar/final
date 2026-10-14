@@ -41,7 +41,7 @@ class ApiService {
     if (kIsWeb) {
       return 'http://localhost:3000/api/v1';
     } else if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.239.139.74:3000/api/v1';
+      return 'http://10.94.110.215:3000/api/v1';
     } else {
       return 'http://localhost:3000/api/v1';
     }

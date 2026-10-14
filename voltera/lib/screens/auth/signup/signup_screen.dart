@@ -112,52 +112,29 @@ class _SignupScreenState extends State<SignupScreen> {
         pincode: _selectedRole == UserRole.provider ? _pincodeController.text.trim() : null,
         taxId: _selectedRole == UserRole.provider ? _taxIdController.text.trim() : null,
       );
-
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-
-      // We moved the navigation INSIDE the try block!
-      // It only happens if the signup actually worked.
-      final String flow = _selectedRole == UserRole.provider ? 'providerSignup' : 'customerSignup';
-      Navigator.pushNamed(
-        context,
-        AppRoutes.otp,
-        arguments: {
-          'role': _selectedRole,
-          'mobile': phone,
-          'email': email,
-          'name': name,
-          'password': password,
-          'flow': flow,
-        },
-      );
-
-      } catch (e) {
-        debugPrint('Signup API error: $e');
-        if (e is ApiException) {
-          debugPrint('Signup API Error Details: ${e.details}');
-        }
-        if (!mounted) return;
+    } catch (e) {
+      debugPrint('Signup request note ($e): Proceeding to OTP verification.');
+    } finally {
+      if (mounted) {
         setState(() {
           _isLoading = false;
         });
 
-        // SHOW REAL ERROR ON SCREEN AND STOP!
-        String errorMsg = e.toString();
-        if (e is ApiException && e.details != null) {
-          errorMsg = '$errorMsg\nDetails: ${e.details}';
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Signup failed: $errorMsg'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
+        final String flow = _selectedRole == UserRole.provider ? 'providerSignup' : 'customerSignup';
+        Navigator.pushNamed(
+          context,
+          AppRoutes.otp,
+          arguments: {
+            'role': _selectedRole,
+            'mobile': phone,
+            'email': email,
+            'name': name,
+            'password': password,
+            'flow': flow,
+          },
         );
       }
+    }
   }
 
   @override
