@@ -320,7 +320,74 @@ class DemoData {
     'resolvedReports': '715',
   };
 
-  static const List<Map<String, dynamic>> adminUsers = [
+  static final List<Map<String, dynamic>> _registeredUsers = [];
+  static final List<Map<String, dynamic>> _registeredProviders = [];
+
+  static int get registeredUsersCount => _registeredUsers.length;
+  static int get registeredCustomersCount => _registeredUsers.where((u) => u['role'] == 'customer').length;
+  static int get registeredProvidersCount => _registeredUsers.where((u) => u['role'] == 'provider').length;
+
+  static List<Map<String, dynamic>> get adminUsers => [
+        ..._registeredUsers,
+        ...staticAdminUsers,
+      ];
+
+  static List<Map<String, dynamic>> get adminProviders => [
+        ..._registeredProviders,
+        ...staticAdminProviders,
+      ];
+
+  static void registerUser({
+    required String name,
+    required String email,
+    required String phone,
+    required UserRole role,
+    String? businessName,
+    String? city,
+    String? address,
+  }) {
+    if (email.isEmpty && phone.isEmpty) return;
+
+    final userId = 'USR-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+    final userCity = (city != null && city.trim().isNotEmpty) ? city.trim() : 'Ahmedabad, Gujarat';
+    final userBusiness = (businessName != null && businessName.trim().isNotEmpty)
+        ? businessName.trim()
+        : (name.trim().isNotEmpty ? name.trim() : 'EV Charging Station');
+
+    final newUser = {
+      'id': userId,
+      'name': name.trim().isNotEmpty ? name.trim() : (email.isNotEmpty ? email.split('@')[0] : 'Registered User'),
+      'role': role.name.toLowerCase(),
+      'status': 'ACTIVE',
+      'email': email.trim().isNotEmpty ? email.trim() : 'user@voltera.demo',
+      'phone': phone.trim().isNotEmpty ? phone.trim() : '+91 98765 43210',
+      'location': userCity,
+      'sessions': 0,
+      'wallet': '₹ 500',
+    };
+
+    _registeredUsers.removeWhere((u) =>
+        (phone.isNotEmpty && u['phone'] == phone) || (email.isNotEmpty && u['email'] == email));
+    _registeredUsers.insert(0, newUser);
+
+    if (role == UserRole.provider) {
+      final newProvider = {
+        'id': 'PRV-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+        'name': name.trim().isNotEmpty ? name.trim() : 'Provider Partner',
+        'business': userBusiness,
+        'city': userCity,
+        'status': 'PENDING',
+        'chargers': 0,
+        'earnings': '₹ 0',
+        'rating': 5.0,
+      };
+
+      _registeredProviders.removeWhere((p) => p['name'] == name || p['business'] == userBusiness);
+      _registeredProviders.insert(0, newProvider);
+    }
+  }
+
+  static const List<Map<String, dynamic>> staticAdminUsers = [
     {'id': 'USR-1001', 'name': 'Rahul Sharma', 'role': 'customer', 'status': 'ACTIVE', 'email': 'rahul@voltera.demo', 'phone': '+91 98765 43210', 'location': 'Ahmedabad, Gujarat', 'sessions': 38, 'wallet': '₹ 1,850'},
     {'id': 'USR-1002', 'name': 'Amit Patel', 'role': 'provider', 'status': 'ACTIVE', 'email': 'amit@voltera.demo', 'phone': '+91 98765 43220', 'location': 'SG Highway, Ahmedabad', 'sessions': 142, 'wallet': '₹ 12,450'},
     {'id': 'USR-1003', 'name': 'Priya Shah', 'role': 'customer', 'status': 'ACTIVE', 'email': 'priya@voltera.demo', 'phone': '+91 98765 43231', 'location': 'Satellite, Ahmedabad', 'sessions': 24, 'wallet': '₹ 920'},
@@ -343,7 +410,7 @@ class DemoData {
     {'id': 'USR-1020', 'name': 'Deepak Kumar', 'role': 'customer', 'status': 'ACTIVE', 'email': 'deepak@voltera.demo', 'phone': '+91 98765 43408', 'location': 'Delhi, NCR', 'sessions': 62, 'wallet': '₹ 4,100'},
   ];
 
-  static const List<Map<String, dynamic>> adminProviders = [
+  static const List<Map<String, dynamic>> staticAdminProviders = [
     {'id': 'PRV-201', 'name': 'Amit Patel', 'business': 'Amit EV Hub', 'city': 'Ahmedabad', 'status': 'APPROVED', 'chargers': 8, 'earnings': '₹ 1,48,750', 'rating': 4.8},
     {'id': 'PRV-202', 'name': 'Raj Mehta', 'business': 'Raj Power Grid', 'city': 'Surat', 'status': 'PENDING', 'chargers': 4, 'earnings': '₹ 0', 'rating': 0.0},
     {'id': 'PRV-203', 'name': 'Vikram Shah', 'business': 'Shah Chargers', 'city': 'Gandhinagar', 'status': 'APPROVED', 'chargers': 6, 'earnings': '₹ 98,200', 'rating': 4.6},

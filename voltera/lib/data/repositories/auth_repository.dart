@@ -94,6 +94,16 @@ class AuthRepositoryImpl implements AuthRepository {
     String? pincode,
     String? taxId,
   }) async {
+    DemoData.registerUser(
+      name: name ?? '',
+      email: email,
+      phone: phone ?? '',
+      role: role,
+      businessName: businessName,
+      city: city,
+      address: address,
+    );
+
     if (DemoConfig.demoMode) {
       return AuthSession(
         userId: 'demo-signup-user',

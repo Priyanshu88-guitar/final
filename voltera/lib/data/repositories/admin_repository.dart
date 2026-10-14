@@ -27,6 +27,10 @@ class AdminRepositoryImpl implements AdminRepository {
 
   @override
   Future<AdminStatistics> getAdminStatistics() async {
+    final extraUsers = DemoData.registeredUsersCount;
+    final extraCust = DemoData.registeredCustomersCount;
+    final extraProv = DemoData.registeredProvidersCount;
+
     try {
       final response = await apiService.get('/admin/dashboard');
       final data = response['data'];
@@ -35,15 +39,15 @@ class AdminRepositoryImpl implements AdminRepository {
         final gross = (summary['grossVolume'] as num?)?.toDouble() ?? 48290500.0;
         final commission = gross * 0.10;
         return AdminStatistics(
-          totalUsers: summary['totalUsers'] as int? ?? 15480,
-          registeredCustomers: summary['customers'] as int? ?? 12850,
-          registeredProviders: summary['providers'] as int? ?? 2420,
+          totalUsers: (summary['totalUsers'] as int? ?? 15480) + extraUsers,
+          registeredCustomers: (summary['customers'] as int? ?? 12850) + extraCust,
+          registeredProviders: (summary['providers'] as int? ?? 2420) + extraProv,
           registeredAdmins: summary['admins'] as int? ?? 210,
-          activeUsers: summary['activeUsers'] as int? ?? 14920,
+          activeUsers: (summary['activeUsers'] as int? ?? 14920) + extraUsers,
           suspendedUsers: summary['suspendedUsers'] as int? ?? 560,
-          totalProviders: summary['providers'] as int? ?? 2420,
+          totalProviders: (summary['providers'] as int? ?? 2420) + extraProv,
           verifiedProviders: summary['verifiedProviders'] as int? ?? 2150,
-          pendingProviders: summary['pendingProviders'] as int? ?? 210,
+          pendingProviders: (summary['pendingProviders'] as int? ?? 210) + extraProv,
           rejectedProviders: summary['rejectedProviders'] as int? ?? 60,
           totalStations: summary['totalStations'] as int? ?? 3850,
           totalChargers: summary['totalChargers'] as int? ?? 11420,
@@ -74,9 +78,85 @@ class AdminRepositoryImpl implements AdminRepository {
           resolvedReports: summary['resolvedReports'] as int? ?? 715,
         );
       }
-      return AdminStatistics.largeMockData;
+      return AdminStatistics(
+        totalUsers: 15480 + extraUsers,
+        registeredCustomers: 12850 + extraCust,
+        registeredProviders: 2420 + extraProv,
+        registeredAdmins: 210,
+        activeUsers: 14920 + extraUsers,
+        suspendedUsers: 560,
+        totalProviders: 2420 + extraProv,
+        verifiedProviders: 2150,
+        pendingProviders: 210 + extraProv,
+        rejectedProviders: 60,
+        totalStations: 3850,
+        totalChargers: 11420,
+        activeChargers: 9840,
+        maintenanceChargers: 1120,
+        pendingChargers: 310,
+        reportedChargers: 150,
+        totalSessions: 148920,
+        completedSessions: 132450,
+        activeSessions: 1240,
+        pendingSessions: 3850,
+        failedSessions: 4120,
+        cancelledSessions: 7260,
+        totalTransactions: 162400,
+        completedPayments: 151200,
+        pendingPayments: 4150,
+        failedPayments: 5220,
+        refundedPayments: 1830,
+        totalRevenue: 48290500.0,
+        completedPaymentAmount: 45210000.0,
+        pendingPaymentAmount: 1830000.0,
+        failedPaymentAmount: 1250500.0,
+        commissionEarned: 4829050.0,
+        providerPayouts: 40381000.0,
+        pendingProviderPayouts: 3080450.0,
+        totalReports: 840,
+        openReports: 125,
+        resolvedReports: 715,
+      );
     } catch (_) {
-      return AdminStatistics.largeMockData;
+      return AdminStatistics(
+        totalUsers: 15480 + extraUsers,
+        registeredCustomers: 12850 + extraCust,
+        registeredProviders: 2420 + extraProv,
+        registeredAdmins: 210,
+        activeUsers: 14920 + extraUsers,
+        suspendedUsers: 560,
+        totalProviders: 2420 + extraProv,
+        verifiedProviders: 2150,
+        pendingProviders: 210 + extraProv,
+        rejectedProviders: 60,
+        totalStations: 3850,
+        totalChargers: 11420,
+        activeChargers: 9840,
+        maintenanceChargers: 1120,
+        pendingChargers: 310,
+        reportedChargers: 150,
+        totalSessions: 148920,
+        completedSessions: 132450,
+        activeSessions: 1240,
+        pendingSessions: 3850,
+        failedSessions: 4120,
+        cancelledSessions: 7260,
+        totalTransactions: 162400,
+        completedPayments: 151200,
+        pendingPayments: 4150,
+        failedPayments: 5220,
+        refundedPayments: 1830,
+        totalRevenue: 48290500.0,
+        completedPaymentAmount: 45210000.0,
+        pendingPaymentAmount: 1830000.0,
+        failedPaymentAmount: 1250500.0,
+        commissionEarned: 4829050.0,
+        providerPayouts: 40381000.0,
+        pendingProviderPayouts: 3080450.0,
+        totalReports: 840,
+        openReports: 125,
+        resolvedReports: 715,
+      );
     }
   }
 
