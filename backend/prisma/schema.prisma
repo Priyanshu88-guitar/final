@@ -182,12 +182,12 @@ model ChargingStation {
   updatedAt   DateTime @updatedAt
 
   provider    User      @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  chargers    Chargers[]
+  chargers    Charger[]
 
   @@map("charging_stations")
 }
 
-model Chargers {
+model Charger {
   id            String   @id @default(uuid())
   stationId     String
   chargerCode   String   @unique
@@ -220,7 +220,7 @@ model Booking {
   updatedAt   DateTime @updatedAt
 
   customer    User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  charger     Chargers  @relation(fields: [chargerId], references: [id], onDelete: Cascade)
+  charger     Charger  @relation(fields: [chargerId], references: [id], onDelete: Cascade)
   session     ChargingSession?
   payments    Payment[]
 
@@ -239,7 +239,7 @@ model ChargingSession {
   updatedAt   DateTime @updatedAt
 
   booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  charger     Chargers  @relation(fields: [chargerId], references: [id], onDelete: Cascade)
+  charger     Charger  @relation(fields: [chargerId], references: [id], onDelete: Cascade)
   customer    User     @relation(fields: [customerId], references: [id], onDelete: Cascade)
   payments    Payment[]
 
@@ -505,7 +505,7 @@ model SavedCharger {
   createdAt  DateTime @default(now())
 
   customer   User    @relation("CustomerSavedChargers", fields: [customerId], references: [id], onDelete: Cascade)
-  charger    Chargers @relation(fields: [chargerId], references: [id], onDelete: Cascade)
+  charger    Charger @relation(fields: [chargerId], references: [id], onDelete: Cascade)
 
   @@unique([customerId, chargerId])
   @@map("saved_chargers")
